@@ -34,7 +34,7 @@ hash: hash.c
 	gcc -Wall -O3 hash.c -o hash
 
 deploy: clean
-	scp Makefile hash.c g0:/home/ep12/ep1025120
+	scp Makefile *.c g0:
 
 clean:
 	rm -rf hash; rm -rf hash_gprof; rm -rf hash_cov; rm -rf gmon.out; rm -rf hash.c.gcov
