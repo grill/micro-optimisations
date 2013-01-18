@@ -154,13 +154,22 @@ int main(int argc, char *argv[])
   int *cache = malloc(size*sizeof(int));
   //loop peeling with caching  
   for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-      nextp=memchr(p, '\n', endp-p);
-      if (nextp == NULL)
-        break;
-      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
-      index++;
-      r = r + (r>>32);
-      p = nextp+1;
+    nextp=memchr(p, '\n', endp-p);
+    if (nextp == NULL)
+      break;
+    
+    if (index >= size){
+      size *= 2;
+      printf("%d\n", size);
+      cache = realloc(cache, size*sizeof(int));
+    }
+    int value = lookup(p, nextp-p);
+    cache[index] = value;
+    index++;
+    
+    r = ((unsigned long)r) * 2654435761L + value;
+    r = r + (r>>32);
+    p = nextp+1;
   }
 
   for (i=0; i<9; i++) {
@@ -169,7 +178,8 @@ int main(int argc, char *argv[])
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
         break;
-      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
+      //r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
+      r = ((unsigned long)r) * 2654435761L + cache[index];
       index++;
       r = r + (r>>32);
       p = nextp+1;
