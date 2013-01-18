@@ -82,10 +82,16 @@ void insert(char *keyaddr, size_t keylen, int value)
 int lookup(char *keyaddr, size_t keylen)
 {
   struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHSIZE-1)];
-  while (l!=NULL) {
+
+  if(l != NULL) {
     if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0)
-      return l->value;
+        return l->value;
     l = l->next;
+    while (l!=NULL) {
+      if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0)
+        return l->value;
+      l = l->next;
+    }
   }
   return -1;
 }

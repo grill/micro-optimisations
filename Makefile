@@ -7,6 +7,9 @@ tests: prof cov cycle perf
 run: hash
 	hash input input2
 
+qcycles: hash
+	perf stat -e cycles hash input input2
+
 cycles: hash
 	perf stat -r 5 -e cycles hash input input2
 
@@ -20,6 +23,9 @@ cov: hash.c
 	hash_cov input input2 > /dev/null
 	gcov hash
 	cat hash.c.gcov
+
+qperf: hash
+	perf stat -e instructions -e branch-misses hash input input2
 
 perf: hash
 	perf stat -r 5 -e instructions -e branch-misses hash input input2
