@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
   int index = 0;
   int size = 1000000;
   int *cache = malloc(size*sizeof(int));
-  //loop peeling with caching  
+  //loop peeling  
   for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
