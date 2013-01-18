@@ -160,7 +160,6 @@ int main(int argc, char *argv[])
     
     if (index >= size){
       size *= 2;
-      printf("%d\n", size);
       cache = realloc(cache, size*sizeof(int));
     }
     int value = lookup(p, nextp-p);

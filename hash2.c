@@ -149,28 +149,22 @@ int main(int argc, char *argv[])
   /* expected value for chisq is ~HASHSIZE */
 #endif
   
-  int index = 0;
-  int size = 1000000;
-  int *cache = malloc(size*sizeof(int));
   //loop peeling  
   for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
         break;
       r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
-      index++;
       r = r + (r>>32);
       p = nextp+1;
   }
 
   for (i=0; i<9; i++) {
-    index = 0;
     for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
         break;
       r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
-      index++;
       r = r + (r>>32);
       p = nextp+1;
     }
