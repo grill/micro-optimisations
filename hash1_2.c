@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define REPEAT10(x) { x x x x x x x x x x }
+
 /* gcc specific */
 typedef unsigned int uint128_t __attribute__((__mode__(TI)));
 
@@ -19,7 +21,7 @@ struct block {
   size_t len;
 };
 
-struct block slurp(char *filename)
+inline struct block slurp(char *filename)
 {
   int fd=open(filename,O_RDONLY);
   char *s;
@@ -49,7 +51,7 @@ struct hashnode {
 
 struct hashnode *ht[HASHSIZE];
 
-unsigned long hash(char *addr, size_t len)
+inline unsigned long hash(char *addr, size_t len)
 {
   /* assumptions: 1) unaligned accesses work 2) little-endian 3) 7 bytes
      beyond last byte can be accessed */
@@ -68,7 +70,7 @@ unsigned long hash(char *addr, size_t len)
   return x+(x>>64);
 }
 
-void insert(char *keyaddr, size_t keylen, int value)
+inline void insert(char *keyaddr, size_t keylen, int value)
 {
   struct hashnode **l=&ht[hash(keyaddr, keylen) & (HASHSIZE-1)];
   struct hashnode *n = malloc(sizeof(struct hashnode));
@@ -79,7 +81,7 @@ void insert(char *keyaddr, size_t keylen, int value)
   *l = n;
 }
 
-int lookup(char *keyaddr, size_t keylen)
+inline int lookup(char *keyaddr, size_t keylen)
 {
   struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHSIZE-1)];
 
@@ -148,42 +150,16 @@ int main(int argc, char *argv[])
 	 sum, sumsq, HASHSIZE, ((double)sumsq)*HASHSIZE/sum-sum);
   /* expected value for chisq is ~HASHSIZE */
 #endif
-  
-  int index = 0;
-  int size = 1000000;
-  int *cache = malloc(size*sizeof(int));
-  //loop peeling with caching  
-  for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-    nextp=memchr(p, '\n', endp-p);
-    if (nextp == NULL)
-      break;
-
-    if (index >= size){
-      size *= 2;
-      cache = realloc(cache, size*sizeof(int));
-    }
-    int value = lookup(p, nextp-p);
-    cache[index] = value;
-    index++;
-    
-    r = ((unsigned long)r) * 2654435761L + value;
-    r = r + (r>>32);
-    p = nextp+1;
-  }
-
-  for (i=0; i<9; i++) {
-    index = 0;
+  REPEAT10 (
     for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
         break;
-      //r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
-      r = ((unsigned long)r) * 2654435761L + cache[index];
-      index++;
+      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;
     }
-  }
+  );
   printf("%ld\n",r);
   return 0;
 } 

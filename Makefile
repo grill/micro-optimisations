@@ -31,7 +31,7 @@ perf: hash
 	perf stat -r 5 -e instructions -e branch-misses hash input input2
 
 hash: hash.c
-	gcc -Wall -O3 hash.c -o hash
+	gcc -Wall -finline-functions -O3 hash.c -o hash
 
 deploy: clean
 	scp Makefile *.c g0:
