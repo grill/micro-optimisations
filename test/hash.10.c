@@ -54,24 +54,19 @@ inline unsigned long hash(char *addr, size_t len)
 {
   /* assumptions: 1) unaligned accesses work 2) little-endian 3) 7 bytes
      beyond last byte can be accessed */
-  uint128_t x;
-  unsigned long * laddr = (unsigned long *) addr;
-  unsigned long * end =  (unsigned long *) (addr+len);
-
-  if(len > 7 ) {
-    x = *laddr * hashmult;
-    end--;
-    for (laddr++; laddr <= end; laddr++) {
-      x = (x + *laddr)*hashmult;
-    }
-    if (laddr < (end+1))
-      x = ( x + ((*laddr)<< ( ((char*)laddr - (char*)end)*8)) ) * hashmult;
-    return x+(x>>64);
-  } else if (laddr < end) {
-    x = (uint128_t)((*laddr)<<((8-len)*8)) * hashmult;
-    return x+(x>>64);
+  uint128_t x=0, w;
+  size_t i, shift;
+  for (i=0; i+7<len; i+=8) {
+    w = *(unsigned long *)(addr+i);
+    x = (x + w)*hashmult;
   }
-  return 0;
+  if (i<len) {
+    shift = (i+8-len)*8;
+    /* printf("len=%d, shift=%d\n",len, shift);*/
+    w = (*(unsigned long *)(addr+i))<<shift;
+    x = (x + w)*hashmult;
+  }
+  return x+(x>>64);
 }
 
 inline void insert(char *keyaddr, size_t keylen, int value)
