@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define REPEAT9(x) { x x x x x x x x x }
+#define REPEAT10(x) { x x x x x x x x x x }
 
 /* gcc specific */
 typedef unsigned int uint128_t __attribute__((__mode__(TI)));
@@ -57,11 +57,19 @@ inline unsigned long hash(char *addr, size_t len)
   /* assumptions: 1) unaligned accesses work 2) little-endian 3) 7 bytes
      beyond last byte can be accessed */
   uint128_t x=0, w;
-  size_t i, shift;
-  for (i=0; i+7<len; i+=8) {
-    w = *(unsigned long *)(addr+i);
-    x = (x + w)*hashmult;
+  size_t i = 0;
+  size_t shift;
+
+  if(len > 7 ) {
+    len = len - 7;
+    x = (*(unsigned long *)addr)*hashmult;
+    for (i=8; i<len; i+=8) {
+      w = *(unsigned long *)(addr+i);
+      x = (x + w)*hashmult;
+    }
+    len = len + 7;
   }
+
   if (i<len) {
     shift = (i+8-len)*8;
     /* printf("len=%d, shift=%d\n",len, shift);*/
@@ -70,6 +78,7 @@ inline unsigned long hash(char *addr, size_t len)
   }
   return x+(x>>64);
 }
+
 
 inline void insert(char *keyaddr, size_t keylen, int value)
 {
@@ -119,6 +128,7 @@ int main()
 }
 */  
       
+
 int main(int argc, char *argv[])
 {
   struct block input1, input2;
@@ -151,38 +161,12 @@ int main(int argc, char *argv[])
 	 sum, sumsq, HASHSIZE, ((double)sumsq)*HASHSIZE/sum-sum);
   /* expected value for chisq is ~HASHSIZE */
 #endif
-  
-  int index = 0;
-  int size = 1000000;
-  int *cache = malloc(size*sizeof(int));
-
-  //loop peeling with caching  
-  for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-    nextp=memchr(p, '\n', endp-p);
-    if (nextp == NULL)
-      break;
-
-    if (index >= size){
-      size *= 2;
-      cache = realloc(cache, size*sizeof(int));
-    }
-    int value = lookup(p, nextp-p);
-    cache[index] = value;
-    index++;
-    
-    r = r * 2654435761L + value;
-    r = r + (r>>32);
-    p = nextp+1;
-  }
-
-  REPEAT9 (
-    index = 0;
+  REPEAT10 (
     for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
         break;
-      r = r * 2654435761L + cache[index];
-      index++;
+      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;
     }
