@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
   /* expected value for chisq is ~HASHSIZE */
 #endif
   
-  int size = input.len/6;
+  int size = input.len/2;
   int *cache = malloc(size*sizeof(int)), *startcache, *endcache;
   startcache = cache;
   endcache = startcache + size;
@@ -172,10 +172,6 @@ int main(int argc, char *argv[])
   for (p=input.addr, endp=input.addr+input.len, nextp=memchr(p, '\n', endp-p);
          nextp != NULL; nextp=memchr(p, '\n', endp-p)) {
 
-    if (cache >= endcache){
-      size = size<<1;
-      cache = realloc(cache, size*sizeof(int));
-    }
     *cache = lookup(p, nextp-p);
     
     r = r * 2654435761L + *cache;
