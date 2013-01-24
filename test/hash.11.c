@@ -139,13 +139,19 @@ int main(int argc, char *argv[])
     fprintf(stderr, "usage: %s <dict-file> <lookup-file>\n", argv[0]);
     exit(1);
   }
-  input = slurp(argv[1]);
-  for (p=input.addr, endp=input.addr+input.len, r=0,
-         nextp=memchr(p, '\n', endp-p); nextp != NULL;
-         r++, nextp=memchr(p, '\n', endp-p)) {
 
+  input = slurp(argv[1]);
+  endp=input.addr+input.len;
+  *endp = '\n';
+  p=input.addr;
+  nextp = p;
+
+  for (r=0; nextp<endp; r++) {
+
+    for(;*nextp ^ '\n'; nextp++);
     insert(p, nextp-p, r);
-    p = nextp+1;
+    nextp++;
+    p = nextp;
   }
 #if 0 
  struct hashnode *n;
@@ -167,21 +173,26 @@ int main(int argc, char *argv[])
   endcache = startcache + size;
   input = slurp(argv[2]);
   r = 0;
+  endp=input.addr+input.len;
+    p=input.addr;
+    nextp = p;
 
   //loop peeling with caching  
-  for (p=input.addr, endp=input.addr+input.len, nextp=memchr(p, '\n', endp-p);
-         nextp != NULL; nextp=memchr(p, '\n', endp-p)) {
+  while(nextp<endp) {
 
     if (cache >= endcache){
       size = size<<1;
       cache = realloc(cache, size*sizeof(int));
     }
+    for(;*nextp ^ '\n'; nextp++);
     *cache = lookup(p, nextp-p);
-    
+
     r = r * 2654435761L + *cache;
     r = r + (r>>32);
     cache++;
-    p = nextp+1;
+
+    nextp++;
+    p = nextp;
   }
   endcache = cache;
 
@@ -191,7 +202,6 @@ int main(int argc, char *argv[])
       r = r * 2654435761L + *cache;
       cache++;
       r = r + (r>>32);
-      p = nextp+1;
     }
   );
   printf("%ld\n",r);

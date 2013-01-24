@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
     while(nextp<endp) {
 
       for(;*nextp ^ '\n'; nextp++);
-      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
+      r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       nextp++;
       p = nextp;

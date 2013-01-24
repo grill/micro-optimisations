@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
     for (p=input.addr, endp=input.addr+input.len, nextp=memchr(p, '\n', endp-p);
          nextp != NULL; nextp=memchr(p, '\n', endp-p)) {
 
-      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
+      r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;
     }
