@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define REPEAT9(x) { x x x x x x x x x }
+#define REPEAT10(x) { x x x x x x x x x x }
 
 /* gcc specific */
 typedef unsigned int uint128_t __attribute__((__mode__(TI)));
@@ -124,6 +124,7 @@ int main()
 }
 */  
       
+
 int main(int argc, char *argv[])
 {
   struct block input1, input2;
@@ -136,10 +137,10 @@ int main(int argc, char *argv[])
   }
   input1 = slurp(argv[1]);
   input2 = slurp(argv[2]);
-  for (p=input1.addr, endp=input1.addr+input1.len, i=0; p<endp; i++) {
-    nextp=memchr(p, '\n', endp-p);
-    if (nextp == NULL)
-      break;
+  for (p=input1.addr, endp=input1.addr+input1.len, i=0,
+         nextp=memchr(p, '\n', endp-p); nextp != NULL && p<endp;
+         i++, nextp=memchr(p, '\n', endp-p)) {
+
     insert(p, nextp-p, i);
     p = nextp+1;
   }
@@ -156,38 +157,11 @@ int main(int argc, char *argv[])
 	 sum, sumsq, HASHSIZE, ((double)sumsq)*HASHSIZE/sum-sum);
   /* expected value for chisq is ~HASHSIZE */
 #endif
-  
-  int index = 0;
-  int size = 1000000;
-  int *cache = malloc(size*sizeof(int));
+  REPEAT10 (
+    for (p=input2.addr, endp=input2.addr+input2.len, nextp=memchr(p, '\n', endp-p);
+         nextp != NULL && p<endp; nextp=memchr(p, '\n', endp-p)) {
 
-  //loop peeling with caching  
-  for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-    nextp=memchr(p, '\n', endp-p);
-    if (nextp == NULL)
-      break;
-
-    if (index >= size){
-      size *= 2;
-      cache = realloc(cache, size*sizeof(int));
-    }
-    int value = lookup(p, nextp-p);
-    cache[index] = value;
-    index++;
-    
-    r = r * 2654435761L + value;
-    r = r + (r>>32);
-    p = nextp+1;
-  }
-
-  REPEAT9 (
-    index = 0;
-    for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-      nextp=memchr(p, '\n', endp-p);
-      if (nextp == NULL)
-        break;
-      r = r * 2654435761L + cache[index];
-      index++;
+      r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;
     }
