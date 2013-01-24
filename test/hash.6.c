@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
         break;
-      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
+      r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;
     }
