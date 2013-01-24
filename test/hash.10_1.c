@@ -24,6 +24,7 @@ struct block {
 inline struct block slurp(char *filename)
 {
   int fd=open(filename,O_RDONLY);
+  char *s;
   struct stat statbuf;
   struct block r;
   if (fd==-1)
@@ -31,9 +32,10 @@ inline struct block slurp(char *filename)
   if (fstat(fd, &statbuf)==-1)
     err(1, "%s", filename);
   /* allocates an extra 7 bytes to allow full-word access to the last byte */
-  r.addr = mmap(NULL,statbuf.st_size+7, PROT_READ|PROT_WRITE,MAP_FILE|MAP_PRIVATE,fd, 0);
-  if (r.addr==MAP_FAILED)
+  s = mmap(NULL,statbuf.st_size+7, PROT_READ|PROT_WRITE,MAP_FILE|MAP_PRIVATE,fd, 0);
+  if (s==MAP_FAILED)
     err(1, "%s", filename);
+  r.addr = s;
   r.len = statbuf.st_size;
   return r;
 }
@@ -54,24 +56,19 @@ inline unsigned long hash(char *addr, size_t len)
 {
   /* assumptions: 1) unaligned accesses work 2) little-endian 3) 7 bytes
      beyond last byte can be accessed */
-  uint128_t x;
-  unsigned long * laddr = (unsigned long *) addr;
-  unsigned long * end =  (unsigned long *) (addr+len);
-
-  if(len > 7 ) {
-    x = *laddr * hashmult;
-    end--;
-    for (laddr++; laddr <= end; laddr++) {
-      x = (x + *laddr)*hashmult;
-    }
-    if (laddr < (end+1))
-      x = ( x + ((*laddr)<< ( ((char*)laddr - (char*)end)*8)) ) * hashmult;
-    return x+(x>>64);
-  } else if (laddr < end) {
-    x = (uint128_t)((*laddr)<<((8-len)*8)) * hashmult;
-    return x+(x>>64);
+  uint128_t x=0, w;
+  size_t i, shift;
+  for (i=0; i+7<len; i+=8) {
+    w = *(unsigned long *)(addr+i);
+    x = (x + w)*hashmult;
   }
-  return 0;
+  if (i<len) {
+    shift = (i+8-len)*8;
+    /* printf("len=%d, shift=%d\n",len, shift);*/
+    w = (*(unsigned long *)(addr+i))<<shift;
+    x = (x + w)*hashmult;
+  }
+  return x+(x>>64);
 }
 
 inline void insert(char *keyaddr, size_t keylen, int value)
@@ -121,9 +118,8 @@ int main()
   return 0;
 }
 */  
-      
-int main(int argc, char *argv[])
-{
+
+int main(int argc, char *argv[]) {
   struct block input;
   char *p, *nextp, *endp;
   unsigned long r;
@@ -131,13 +127,19 @@ int main(int argc, char *argv[])
     fprintf(stderr, "usage: %s <dict-file> <lookup-file>\n", argv[0]);
     exit(1);
   }
-  input = slurp(argv[1]);
-  for (p=input.addr, endp=input.addr+input.len, r=0,
-         nextp=memchr(p, '\n', endp-p); nextp != NULL;
-         r++, nextp=memchr(p, '\n', endp-p)) {
 
+  input = slurp(argv[1]);
+  endp=input.addr+input.len;
+  *endp = '\n';
+  p=input.addr;
+  nextp = p;
+
+  for (r=0; nextp<endp; r++) {
+
+    for(;*nextp ^ '\n'; nextp++);
     insert(p, nextp-p, r);
-    p = nextp+1;
+    nextp++;
+    p = nextp;
   }
 #if 0 
  struct hashnode *n;
@@ -154,16 +156,20 @@ int main(int argc, char *argv[])
 #endif
   input = slurp(argv[2]);
   r=0;
+  endp=input.addr+input.len;
 
   REPEAT10 (
-    for (p=input.addr, endp=input.addr+input.len, nextp=memchr(p, '\n', endp-p);
-         nextp != NULL; nextp=memchr(p, '\n', endp-p)) {
+    p=input.addr;
+    nextp = p;
+    while(nextp<endp) {
 
+      for(;*nextp ^ '\n'; nextp++);
       r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
-      p = nextp+1;
+      nextp++;
+      p = nextp;
     }
   );
   printf("%ld\n",r);
   return 0;
-} 
+}

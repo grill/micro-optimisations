@@ -24,6 +24,7 @@ struct block {
 inline struct block slurp(char *filename)
 {
   int fd=open(filename,O_RDONLY);
+  char *s;
   struct stat statbuf;
   struct block r;
   if (fd==-1)
@@ -31,9 +32,10 @@ inline struct block slurp(char *filename)
   if (fstat(fd, &statbuf)==-1)
     err(1, "%s", filename);
   /* allocates an extra 7 bytes to allow full-word access to the last byte */
-  r.addr = mmap(NULL,statbuf.st_size+7, PROT_READ|PROT_WRITE,MAP_FILE|MAP_PRIVATE,fd, 0);
-  if (r.addr==MAP_FAILED)
+  s = mmap(NULL,statbuf.st_size+7, PROT_READ|PROT_WRITE,MAP_FILE|MAP_PRIVATE,fd, 0);
+  if (s==MAP_FAILED)
     err(1, "%s", filename);
+  r.addr = s;
   r.len = statbuf.st_size;
   return r;
 }
