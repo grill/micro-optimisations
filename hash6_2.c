@@ -72,6 +72,7 @@ unsigned long hash(char *addr, size_t len)
 void insert(char *keyaddr, size_t keylen, int value)
 {
   struct hashnode **l=&ht[hash(keyaddr, keylen) & (HASHMOD)];
+  *(keyaddr+keylen) = 0;
   struct hashnode *n = malloc(sizeof(struct hashnode));
   n->next = *l;
   n->keyaddr = keyaddr;
@@ -81,11 +82,10 @@ void insert(char *keyaddr, size_t keylen, int value)
 }
 
 int mycmp(char* in1, char* in2, int len){
-  do{
-    if(*in1 ^ *in2) return 0;
+  while(*in1 == *in2) {
     in1++; in2++; len--;
-  }while(len>0);
-  return 1;
+  }
+  return len;
 }
 
 int lookup(char *keyaddr, size_t keylen)
@@ -93,11 +93,11 @@ int lookup(char *keyaddr, size_t keylen)
   struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHMOD)];
 
   if(l != NULL) {
-    if (keylen == l->keylen && mycmp(l->keyaddr, keyaddr, keylen))
+    if (keylen == l->keylen && !mycmp(l->keyaddr, keyaddr, keylen))
         return l->value;
     l = l->next;
     while (l!=NULL) {
-      if (keylen == l->keylen && mycmp(keyaddr, l->keyaddr, keylen))
+      if (keylen == l->keylen && !mycmp(keyaddr, l->keyaddr, keylen))
         return l->value;
       l = l->next;
     }
