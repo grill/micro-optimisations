@@ -48,6 +48,13 @@ struct hashnode {
   int value;
 };
 
+struct hashnodearray {
+  char *keyaddr;
+  size_t keylen;
+  int value;
+};
+
+
 struct hashnode *ht[HASHSIZE];
 
 unsigned long hash(char *addr, size_t len)
@@ -80,26 +87,19 @@ void insert(char *keyaddr, size_t keylen, int value)
   *l = n;
 }
 
-int mycmp(char* in1, char* in2, int len){
-  do{
-    if(*in1 ^ *in2) return 0;
-    in1++; in2++; len--;
-  }while(len>0);
-  return 1;
-}
-
 int lookup(char *keyaddr, size_t keylen)
 {
-  struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHMOD)];
-
+  struct hashnodearray *l= (struct hashnodearray*) ht[hash(keyaddr, keylen) & (HASHMOD)];
   if(l != NULL) {
-    if (keylen == l->keylen && mycmp(l->keyaddr, keyaddr, keylen))
+    if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0){
         return l->value;
-    l = l->next;
+    }
+    l++;
     while (l!=NULL) {
-      if (keylen == l->keylen && mycmp(keyaddr, l->keyaddr, keylen))
+      if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0){
         return l->value;
-      l = l->next;
+      }
+      l++;
     }
   }
   return -1;
@@ -124,7 +124,38 @@ int main()
   return 0;
 }
 */  
-      
+  
+void reorganize(){
+  int i, j, k;
+  struct hashnode *node;
+  struct hashnodearray *nnode, *tempnode = NULL;
+  for(k=0, i=0; i<HASHSIZE; i++){
+    if (ht[i] == NULL) continue;
+    node = ht[i];
+    j = 1;
+    while(node->next != NULL){
+      j++;
+      node = node->next;
+    }
+    node = ht[i];
+    //nnode = calloc(j, sizeof(struct hashnodearray));
+    nnode = malloc(j * sizeof(struct hashnodearray));
+    j=0;
+    do{
+      tempnode = nnode + j;
+      tempnode->keyaddr = node->keyaddr;
+      tempnode->keylen = node->keylen;
+      tempnode->value = node->value;
+      if(node->next == NULL) break;
+      node = node->next;
+      j++;
+    }while(1);
+
+    ht[i] = (struct hashnode*) nnode;
+  }
+  //printf("\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n");
+}
+
 int main(int argc, char *argv[])
 {
   struct block input1, input2;
@@ -144,6 +175,17 @@ int main(int argc, char *argv[])
     insert(p, nextp-p, i);
     p = nextp+1;
   }
+
+/*  n = ht[237378];
+  do {
+    printf("%d - %d - %d\n",n->value,n->keyaddr,n->keylen);
+    for(j=0; j<n->keylen; j++) printf("%c", (n->keyaddr)[j]);
+    printf("\n");
+    if (n->next != NULL) n = n->next;
+  } while(n->next != NULL);
+*/
+  reorganize();
+
 #if 0 
  struct hashnode *n;
   unsigned long count, sumsq=0, sum=0;
