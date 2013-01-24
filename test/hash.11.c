@@ -200,8 +200,8 @@ int main(int argc, char *argv[])
     cache = startcache;
     while (cache < endcache) {
       r = r * 2654435761L + *cache;
-      cache++;
       r = r + (r>>32);
+      cache++;
     }
   );
   printf("%ld\n",r);
