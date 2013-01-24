@@ -56,7 +56,6 @@ struct hashnodearray {
 
 
 struct hashnode *ht[HASHSIZE];
-struct hashnodearray *ht2[HASHSIZE];
 
 unsigned long hash(char *addr, size_t len)
 {
@@ -90,7 +89,7 @@ void insert(char *keyaddr, size_t keylen, int value)
 
 int lookup(char *keyaddr, size_t keylen)
 {
-  struct hashnodearray *l=ht2[hash(keyaddr, keylen) & (HASHMOD)];
+  struct hashnodearray *l= (struct hashnodearray*) ht[hash(keyaddr, keylen) & (HASHMOD)];
   if(l != NULL) {
     if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0){
         return l->value;
@@ -152,7 +151,7 @@ void reorganize(){
       j++;
     }while(1);
 
-    ht2[i] = nnode;
+    ht[i] = (struct hashnode*) nnode;
   }
   //printf("\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n");
 }
