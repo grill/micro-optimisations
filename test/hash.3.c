@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define REPEAT10(x) { x x x x x x x x x x }
+
 /* gcc specific */
 typedef unsigned int uint128_t __attribute__((__mode__(TI)));
 
@@ -148,18 +150,7 @@ int main(int argc, char *argv[])
 	 sum, sumsq, HASHSIZE, ((double)sumsq)*HASHSIZE/sum-sum);
   /* expected value for chisq is ~HASHSIZE */
 #endif
-  
-  //loop peeling  
-  for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-      nextp=memchr(p, '\n', endp-p);
-      if (nextp == NULL)
-        break;
-      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
-      r = r + (r>>32);
-      p = nextp+1;
-  }
-
-  for (i=0; i<9; i++) {
+  REPEAT10 (
     for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
@@ -168,7 +159,7 @@ int main(int argc, char *argv[])
       r = r + (r>>32);
       p = nextp+1;
     }
-  }
+  );
   printf("%ld\n",r);
   return 0;
 } 

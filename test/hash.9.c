@@ -82,16 +82,24 @@ inline void insert(char *keyaddr, size_t keylen, int value)
   *l = n;
 }
 
+inline int mycmp(char* in1, char* in2, int len){
+  do{
+    if(*in1 ^ *in2) return 0;
+    in1++; in2++; len--;
+  }while(len>0);
+  return 1;
+}
+
 inline int lookup(char *keyaddr, size_t keylen)
 {
   struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHMOD)];
 
   if(l != NULL) {
-    if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0)
+    if (keylen == l->keylen && mycmp(l->keyaddr, keyaddr, keylen))
         return l->value;
     l = l->next;
     while (l!=NULL) {
-      if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0)
+      if (keylen == l->keylen && mycmp(keyaddr, l->keyaddr, keylen))
         return l->value;
       l = l->next;
     }
@@ -117,9 +125,9 @@ int main()
   }
   return 0;
 }
-*/
-int main(int argc, char *argv[])
-{
+*/  
+
+int main(int argc, char *argv[]) {
   struct block input;
   char *p, *nextp, *endp;
   unsigned long r;
@@ -127,13 +135,19 @@ int main(int argc, char *argv[])
     fprintf(stderr, "usage: %s <dict-file> <lookup-file>\n", argv[0]);
     exit(1);
   }
-  input = slurp(argv[1]);
-  for (p=input.addr, endp=input.addr+input.len, r=0,
-         nextp=memchr(p, '\n', endp-p); nextp != NULL;
-         r++, nextp=memchr(p, '\n', endp-p)) {
 
+  input = slurp(argv[1]);
+  endp=input.addr+input.len;
+  *endp = '\n';
+  p=input.addr;
+  nextp = p;
+
+  for (r=0; nextp<endp; r++) {
+
+    for(;*nextp ^ '\n'; nextp++);
     insert(p, nextp-p, r);
-    p = nextp+1;
+    nextp++;
+    p = nextp;
   }
 #if 0 
  struct hashnode *n;
@@ -150,16 +164,20 @@ int main(int argc, char *argv[])
 #endif
   input = slurp(argv[2]);
   r=0;
+  endp=input.addr+input.len;
 
   REPEAT10 (
-    for (p=input.addr, endp=input.addr+input.len, nextp=memchr(p, '\n', endp-p);
-         nextp != NULL; nextp=memchr(p, '\n', endp-p)) {
+    p=input.addr;
+    nextp = p;
+    while(nextp<endp) {
 
-      r = r * 2654435761L + lookup(p, nextp-p);
+      for(;*nextp ^ '\n'; nextp++);
+      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
-      p = nextp+1;
+      nextp++;
+      p = nextp;
     }
   );
   printf("%ld\n",r);
   return 0;
-} 
+}

@@ -57,19 +57,11 @@ inline unsigned long hash(char *addr, size_t len)
   /* assumptions: 1) unaligned accesses work 2) little-endian 3) 7 bytes
      beyond last byte can be accessed */
   uint128_t x=0, w;
-  size_t i = 0;
-  size_t shift;
-
-  if(len > 7 ) {
-    len = len - 7;
-    x = (*(unsigned long *)addr)*hashmult;
-    for (i=8; i<len; i+=8) {
-      w = *(unsigned long *)(addr+i);
-      x = (x + w)*hashmult;
-    }
-    len = len + 7;
+  size_t i, shift;
+  for (i=0; i+7<len; i+=8) {
+    w = *(unsigned long *)(addr+i);
+    x = (x + w)*hashmult;
   }
-
   if (i<len) {
     shift = (i+8-len)*8;
     /* printf("len=%d, shift=%d\n",len, shift);*/
@@ -78,7 +70,6 @@ inline unsigned long hash(char *addr, size_t len)
   }
   return x+(x>>64);
 }
-
 
 inline void insert(char *keyaddr, size_t keylen, int value)
 {
@@ -141,10 +132,10 @@ int main(int argc, char *argv[])
   }
   input1 = slurp(argv[1]);
   input2 = slurp(argv[2]);
-  for (p=input1.addr, endp=input1.addr+input1.len, i=0; p<endp; i++) {
-    nextp=memchr(p, '\n', endp-p);
-    if (nextp == NULL)
-      break;
+  for (p=input1.addr, endp=input1.addr+input1.len, i=0,
+         nextp=memchr(p, '\n', endp-p); nextp != NULL && p<endp;
+         i++, nextp=memchr(p, '\n', endp-p)) {
+
     insert(p, nextp-p, i);
     p = nextp+1;
   }
@@ -162,10 +153,9 @@ int main(int argc, char *argv[])
   /* expected value for chisq is ~HASHSIZE */
 #endif
   REPEAT10 (
-    for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-      nextp=memchr(p, '\n', endp-p);
-      if (nextp == NULL)
-        break;
+    for (p=input2.addr, endp=input2.addr+input2.len, nextp=memchr(p, '\n', endp-p);
+         nextp != NULL && p<endp; nextp=memchr(p, '\n', endp-p)) {
+
       r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;

@@ -118,26 +118,28 @@ int main()
   return 0;
 }
 */  
-      
 
-int main(int argc, char *argv[])
-{
-  struct block input1, input2;
+int main(int argc, char *argv[]) {
+  struct block input;
   char *p, *nextp, *endp;
-  unsigned int i;
-  unsigned long r=0;
-  if (argc!=3) {
+  unsigned long r;
+  if (argc^3) {
     fprintf(stderr, "usage: %s <dict-file> <lookup-file>\n", argv[0]);
     exit(1);
   }
-  input1 = slurp(argv[1]);
-  input2 = slurp(argv[2]);
-  for (p=input1.addr, endp=input1.addr+input1.len, i=0,
-         nextp=memchr(p, '\n', endp-p); nextp != NULL && p<endp;
-         i++, nextp=memchr(p, '\n', endp-p)) {
 
-    insert(p, nextp-p, i);
-    p = nextp+1;
+  input = slurp(argv[1]);
+  endp=input.addr+input.len;
+  *endp = '\n';
+  p=input.addr;
+  nextp = p;
+
+  for (r=0; nextp<endp; r++) {
+
+    for(;*nextp ^ '\n'; nextp++);
+    insert(p, nextp-p, r);
+    nextp++;
+    p = nextp;
   }
 #if 0 
  struct hashnode *n;
@@ -152,15 +154,22 @@ int main(int argc, char *argv[])
 	 sum, sumsq, HASHSIZE, ((double)sumsq)*HASHSIZE/sum-sum);
   /* expected value for chisq is ~HASHSIZE */
 #endif
-  REPEAT10 (
-    for (p=input2.addr, endp=input2.addr+input2.len, nextp=memchr(p, '\n', endp-p);
-         nextp != NULL && p<endp; nextp=memchr(p, '\n', endp-p)) {
+  input = slurp(argv[2]);
+  r=0;
+  endp=input.addr+input.len;
 
+  REPEAT10 (
+    p=input.addr;
+    nextp = p;
+    while(nextp<endp) {
+
+      for(;*nextp ^ '\n'; nextp++);
       r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
-      p = nextp+1;
+      nextp++;
+      p = nextp;
     }
   );
   printf("%ld\n",r);
   return 0;
-} 
+}

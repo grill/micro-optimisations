@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define REPEAT10(x) { x x x x x x x x x x }
+
 /* gcc specific */
 typedef unsigned int uint128_t __attribute__((__mode__(TI)));
 
@@ -39,6 +41,7 @@ inline struct block slurp(char *filename)
 }
 
 #define HASHSIZE (1<<20)
+#define HASHMOD (HASHSIZE-1)
 
 struct hashnode {
   struct hashnode *next; /* link in external chaining */
@@ -54,11 +57,19 @@ inline unsigned long hash(char *addr, size_t len)
   /* assumptions: 1) unaligned accesses work 2) little-endian 3) 7 bytes
      beyond last byte can be accessed */
   uint128_t x=0, w;
-  size_t i, shift;
-  for (i=0; i+7<len; i+=8) {
-    w = *(unsigned long *)(addr+i);
-    x = (x + w)*hashmult;
+  size_t i = 0;
+  size_t shift;
+
+  if(len > 7 ) {
+    len = len - 7;
+    x = (*(unsigned long *)addr)*hashmult;
+    for (i=8; i<len; i+=8) {
+      w = *(unsigned long *)(addr+i);
+      x = (x + w)*hashmult;
+    }
+    len = len + 7;
   }
+
   if (i<len) {
     shift = (i+8-len)*8;
     /* printf("len=%d, shift=%d\n",len, shift);*/
@@ -68,9 +79,10 @@ inline unsigned long hash(char *addr, size_t len)
   return x+(x>>64);
 }
 
+
 inline void insert(char *keyaddr, size_t keylen, int value)
 {
-  struct hashnode **l=&ht[hash(keyaddr, keylen) & (HASHSIZE-1)];
+  struct hashnode **l=&ht[hash(keyaddr, keylen) & (HASHMOD)];
   struct hashnode *n = malloc(sizeof(struct hashnode));
   n->next = *l;
   n->keyaddr = keyaddr;
@@ -81,7 +93,7 @@ inline void insert(char *keyaddr, size_t keylen, int value)
 
 inline int lookup(char *keyaddr, size_t keylen)
 {
-  struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHSIZE-1)];
+  struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHMOD)];
 
   if(l != NULL) {
     if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0)
@@ -116,6 +128,7 @@ int main()
 }
 */  
       
+
 int main(int argc, char *argv[])
 {
   struct block input1, input2;
@@ -148,43 +161,16 @@ int main(int argc, char *argv[])
 	 sum, sumsq, HASHSIZE, ((double)sumsq)*HASHSIZE/sum-sum);
   /* expected value for chisq is ~HASHSIZE */
 #endif
-  
-  int index = 0;
-  int size = 1000000;
-  int *cache = malloc(size*sizeof(int));
-
-  //loop peeling with caching  
-  for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-    nextp=memchr(p, '\n', endp-p);
-    if (nextp == NULL)
-      break;
-
-    if (index >= size){
-      size *= 2;
-      cache = realloc(cache, size*sizeof(int));
-    }
-    int value = lookup(p, nextp-p);
-    cache[index] = value;
-    index++;
-    
-    r = ((unsigned long)r) * 2654435761L + value;
-    r = r + (r>>32);
-    p = nextp+1;
-  }
-
-  for (i=0; i<9; i++) {
-    index = 0;
+  REPEAT10 (
     for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
         break;
-      //r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
-      r = ((unsigned long)r) * 2654435761L + cache[index];
-      index++;
+      r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;
     }
-  }
+  );
   printf("%ld\n",r);
   return 0;
 } 

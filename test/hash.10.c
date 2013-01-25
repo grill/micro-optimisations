@@ -74,6 +74,7 @@ inline unsigned long hash(char *addr, size_t len)
 inline void insert(char *keyaddr, size_t keylen, int value)
 {
   struct hashnode **l=&ht[hash(keyaddr, keylen) & (HASHMOD)];
+  *(keyaddr+keylen) = 0;
   struct hashnode *n = malloc(sizeof(struct hashnode));
   n->next = *l;
   n->keyaddr = keyaddr;
@@ -82,16 +83,26 @@ inline void insert(char *keyaddr, size_t keylen, int value)
   *l = n;
 }
 
+//gg mycmp
+
+inline int mycmp(char* in1, char* in2, int len){
+  while(*in1 == *in2) {
+    in1++; in2++; len--;
+  }
+  return len;
+}
+
+
 inline int lookup(char *keyaddr, size_t keylen)
 {
   struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHMOD)];
 
   if(l != NULL) {
-    if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0)
+    if (keylen == l->keylen && !mycmp(l->keyaddr, keyaddr, keylen))
         return l->value;
     l = l->next;
     while (l!=NULL) {
-      if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0)
+      if (keylen == l->keylen && !mycmp(l->keyaddr, keyaddr, keylen))
         return l->value;
       l = l->next;
     }
@@ -164,7 +175,7 @@ int main(int argc, char *argv[]) {
     while(nextp<endp) {
 
       for(;*nextp ^ '\n'; nextp++);
-      r = r * 2654435761L + lookup(p, nextp-p);
+      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       nextp++;
       p = nextp;

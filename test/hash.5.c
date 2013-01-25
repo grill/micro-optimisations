@@ -41,6 +41,7 @@ inline struct block slurp(char *filename)
 }
 
 #define HASHSIZE (1<<20)
+#define HASHMOD (HASHSIZE-1)
 
 struct hashnode {
   struct hashnode *next; /* link in external chaining */
@@ -55,24 +56,29 @@ inline unsigned long hash(char *addr, size_t len)
 {
   /* assumptions: 1) unaligned accesses work 2) little-endian 3) 7 bytes
      beyond last byte can be accessed */
-  uint128_t x=0, w;
-  size_t i, shift;
-  for (i=0; i+7<len; i+=8) {
-    w = *(unsigned long *)(addr+i);
-    x = (x + w)*hashmult;
+  uint128_t x;
+  unsigned long * laddr = (unsigned long *) addr;
+  unsigned long * end =  (unsigned long *) (addr+len);
+
+  if(len > 7 ) {
+    x = *laddr * hashmult;
+    end--;
+    for (laddr++; laddr <= end; laddr++) {
+      x = (x + *laddr)*hashmult;
+    }
+    if (laddr < (end+1))
+      x = ( x + ((*laddr)<< ( ((char*)laddr - (char*)end)*8)) ) * hashmult;
+    return x+(x>>64);
+  } else if (laddr < end) {
+    x = (uint128_t)((*laddr)<<((8-len)*8)) * hashmult;
+    return x+(x>>64);
   }
-  if (i<len) {
-    shift = (i+8-len)*8;
-    /* printf("len=%d, shift=%d\n",len, shift);*/
-    w = (*(unsigned long *)(addr+i))<<shift;
-    x = (x + w)*hashmult;
-  }
-  return x+(x>>64);
+  return 0;
 }
 
 inline void insert(char *keyaddr, size_t keylen, int value)
 {
-  struct hashnode **l=&ht[hash(keyaddr, keylen) & (HASHSIZE-1)];
+  struct hashnode **l=&ht[hash(keyaddr, keylen) & (HASHMOD)];
   struct hashnode *n = malloc(sizeof(struct hashnode));
   n->next = *l;
   n->keyaddr = keyaddr;
@@ -83,7 +89,7 @@ inline void insert(char *keyaddr, size_t keylen, int value)
 
 inline int lookup(char *keyaddr, size_t keylen)
 {
-  struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHSIZE-1)];
+  struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHMOD)];
 
   if(l != NULL) {
     if (keylen == l->keylen && memcmp(keyaddr, l->keyaddr, keylen)==0)
@@ -118,6 +124,7 @@ int main()
 }
 */  
       
+
 int main(int argc, char *argv[])
 {
   struct block input1, input2;
@@ -155,7 +162,7 @@ int main(int argc, char *argv[])
       nextp=memchr(p, '\n', endp-p);
       if (nextp == NULL)
         break;
-      r = ((unsigned long)r) * 2654435761L + lookup(p, nextp-p);
+      r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;
     }

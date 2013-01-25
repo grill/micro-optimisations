@@ -56,24 +56,19 @@ inline unsigned long hash(char *addr, size_t len)
 {
   /* assumptions: 1) unaligned accesses work 2) little-endian 3) 7 bytes
      beyond last byte can be accessed */
-  uint128_t x;
-  unsigned long * laddr = (unsigned long *) addr;
-  unsigned long * end =  (unsigned long *) (addr+len);
-
-  if(len > 7 ) {
-    x = *laddr * hashmult;
-    end--;
-    for (laddr++; laddr <= end; laddr++) {
-      x = (x + *laddr)*hashmult;
-    }
-    if (laddr < (end+1))
-      x = ( x + ((*laddr)<< ( ((char*)laddr - (char*)end)*8)) ) * hashmult;
-    return x+(x>>64);
-  } else if (laddr < end) {
-    x = (uint128_t)((*laddr)<<((8-len)*8)) * hashmult;
-    return x+(x>>64);
+  uint128_t x=0, w;
+  size_t i, shift;
+  for (i=0; i+7<len; i+=8) {
+    w = *(unsigned long *)(addr+i);
+    x = (x + w)*hashmult;
   }
-  return 0;
+  if (i<len) {
+    shift = (i+8-len)*8;
+    /* printf("len=%d, shift=%d\n",len, shift);*/
+    w = (*(unsigned long *)(addr+i))<<shift;
+    x = (x + w)*hashmult;
+  }
+  return x+(x>>64);
 }
 
 inline void insert(char *keyaddr, size_t keylen, int value)
@@ -122,26 +117,22 @@ int main()
   }
   return 0;
 }
-*/  
-      
-
+*/
 int main(int argc, char *argv[])
 {
-  struct block input1, input2;
+  struct block input;
   char *p, *nextp, *endp;
-  unsigned int i;
-  unsigned long r=0;
-  if (argc!=3) {
+  unsigned long r;
+  if (argc^3) {
     fprintf(stderr, "usage: %s <dict-file> <lookup-file>\n", argv[0]);
     exit(1);
   }
-  input1 = slurp(argv[1]);
-  input2 = slurp(argv[2]);
-  for (p=input1.addr, endp=input1.addr+input1.len, i=0; p<endp; i++) {
-    nextp=memchr(p, '\n', endp-p);
-    if (nextp == NULL)
-      break;
-    insert(p, nextp-p, i);
+  input = slurp(argv[1]);
+  for (p=input.addr, endp=input.addr+input.len, r=0,
+         nextp=memchr(p, '\n', endp-p); nextp != NULL;
+         r++, nextp=memchr(p, '\n', endp-p)) {
+
+    insert(p, nextp-p, r);
     p = nextp+1;
   }
 #if 0 
@@ -157,11 +148,13 @@ int main(int argc, char *argv[])
 	 sum, sumsq, HASHSIZE, ((double)sumsq)*HASHSIZE/sum-sum);
   /* expected value for chisq is ~HASHSIZE */
 #endif
+  input = slurp(argv[2]);
+  r=0;
+
   REPEAT10 (
-    for (p=input2.addr, endp=input2.addr+input2.len; p<endp; ) {
-      nextp=memchr(p, '\n', endp-p);
-      if (nextp == NULL)
-        break;
+    for (p=input.addr, endp=input.addr+input.len, nextp=memchr(p, '\n', endp-p);
+         nextp != NULL; nextp=memchr(p, '\n', endp-p)) {
+
       r = r * 2654435761L + lookup(p, nextp-p);
       r = r + (r>>32);
       p = nextp+1;

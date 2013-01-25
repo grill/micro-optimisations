@@ -77,7 +77,6 @@ inline unsigned long hash(char *addr, size_t len)
 inline void insert(char *keyaddr, size_t keylen, int value)
 {
   struct hashnode **l=&ht[hash(keyaddr, keylen) & (HASHMOD)];
-  *(keyaddr+keylen) = 0;
   struct hashnode *n = malloc(sizeof(struct hashnode));
   n->next = *l;
   n->keyaddr = keyaddr;
@@ -87,10 +86,11 @@ inline void insert(char *keyaddr, size_t keylen, int value)
 }
 
 inline int mycmp(char* in1, char* in2, int len){
-  while(*in1 == *in2) {
+  do{
+    if(*in1 ^ *in2) return 0;
     in1++; in2++; len--;
-  }
-  return len;
+  }while(len>0);
+  return 1;
 }
 
 inline int lookup(char *keyaddr, size_t keylen)
@@ -98,11 +98,11 @@ inline int lookup(char *keyaddr, size_t keylen)
   struct hashnode *l=ht[hash(keyaddr, keylen) & (HASHMOD)];
 
   if(l != NULL) {
-    if (keylen == l->keylen && !mycmp(l->keyaddr, keyaddr, keylen))
+    if (keylen == l->keylen && mycmp(l->keyaddr, keyaddr, keylen))
         return l->value;
     l = l->next;
     while (l!=NULL) {
-      if (keylen == l->keylen && !mycmp(l->keyaddr, keyaddr, keylen))
+      if (keylen == l->keylen && mycmp(keyaddr, l->keyaddr, keylen))
         return l->value;
       l = l->next;
     }
@@ -139,6 +139,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "usage: %s <dict-file> <lookup-file>\n", argv[0]);
     exit(1);
   }
+
   input = slurp(argv[1]);
   endp=input.addr+input.len;
   *endp = '\n';
@@ -166,19 +167,23 @@ int main(int argc, char *argv[])
   /* expected value for chisq is ~HASHSIZE */
 #endif
   
-  int size = input.len/2;
+  int size = input.len/6;
   int *cache = malloc(size*sizeof(int)), *startcache, *endcache;
   startcache = cache;
   endcache = startcache + size;
   input = slurp(argv[2]);
   r = 0;
   endp=input.addr+input.len;
-  p=input.addr;
-  nextp = p;
+    p=input.addr;
+    nextp = p;
 
   //loop peeling with caching  
   while(nextp<endp) {
 
+    if (cache >= endcache){
+      size = size<<1;
+      cache = realloc(cache, size*sizeof(int));
+    }
     for(;*nextp ^ '\n'; nextp++);
     *cache = lookup(p, nextp-p);
 
@@ -197,7 +202,6 @@ int main(int argc, char *argv[])
       r = r * 2654435761L + *cache;
       r = r + (r>>32);
       cache++;
-      p = nextp+1;
     }
   );
   printf("%ld\n",r);
