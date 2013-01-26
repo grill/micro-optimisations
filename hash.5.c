@@ -62,9 +62,12 @@ inline unsigned long hash(char *addr, size_t len)
 
   if(len > 7 ) {
     x = *laddr * hashmult;
-    end--;
-    for (laddr++; laddr <= end; laddr++) {
-      x = (x + *laddr)*hashmult;
+    if(len > 15) {
+      x = (x + (++laddr)*hashmult;
+      end--;
+      for (laddr++; laddr <= end; laddr++) {
+        x = (x + *laddr)*hashmult;
+      }
     }
     if (laddr < (end+1))
       x = ( x + ((*laddr)<< ( ((char*)laddr - (char*)end)*8)) ) * hashmult;
